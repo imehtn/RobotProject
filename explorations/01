@@ -55,22 +55,22 @@ int main(void)
         {}
     }
 
-    motor0.SetPercent(-25);
-    motor1.SetPercent(-25);
+    motor0.SetPercent(25);
+    motor1.SetPercent(25);
 
-    while (!(cell4.Value() && cell2.Value()));
+    while (!(cell1.Value() && cell3.Value()))
+    {}
+
+    motor0.SetPercent(-25);
+    while (!cell4.Value())
+    {}
 
     motor0.SetPercent(25);
     motor1.SetPercent(25);
 
     if (cell1.Value() && cell3.Value())
-    {
-        motor1.SetPercent(-25);
+    {}
 
-        while (!cell2.Value())
-        {};
-    }
-
-    motor0.SetPercent(25);
-    motor1.SetPercent(25);
+    motor0.SetPercent(0);
+    motor1.SetPercent(0);
 }
