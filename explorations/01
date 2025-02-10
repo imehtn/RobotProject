@@ -1,0 +1,76 @@
+#include <FEHLCD.h>
+#include <FEHMotor.h>
+#include <FEHServo.h>
+#include <FEHIO.h>
+#include <FEHUtility.h>
+
+
+//code for exploration 1
+int main(void)
+{   
+
+    AnalogInputPin cds_cell(FEHIO::P0_0);
+    /* Part 1;
+    while (1)
+    {
+        float x = cds_cell.Value();
+        LCD.WriteLine(x);
+        Sleep(2.0);
+    }*/
+    
+    /*Part 2
+
+    FEHServo arm(FEHServo::Servo7);
+
+    //arm.TouchCalibrate();
+
+    arm.SetMin(500);
+    arm.SetMax(2298);
+
+    while(1)
+    {
+        arm.SetDegree((cds_cell.Value()/3.3)*180);
+    }*/
+
+   //Part 3
+    DigitalInputPin cell1(FEHIO::P0_0);
+    DigitalInputPin cell2(FEHIO::P1_0);
+    DigitalInputPin cell3(FEHIO::P2_0);
+    DigitalInputPin cell4(FEHIO::P3_0);
+
+    FEHMotor motor0(FEHMotor::Motor0, 9.0);
+    FEHMotor motor1(FEHMotor::Motor1, 9.0);
+
+    //float y = cds_cell.Value();
+    //while (y==1){}
+    
+    motor0.SetPercent(25);
+    motor1.SetPercent(27);
+
+    if (cell1.Value() && cell3.Value())
+    {
+        motor1.SetPercent(-25);
+
+        while (!cell2.Value())
+        {}
+    }
+
+    motor0.SetPercent(-25);
+    motor1.SetPercent(-25);
+
+    while (!(cell4.Value() && cell2.Value()));
+
+    motor0.SetPercent(25);
+    motor1.SetPercent(25);
+
+    if (cell1.Value() && cell3.Value())
+    {
+        motor1.SetPercent(-25);
+
+        while (!cell2.Value())
+        {};
+    }
+
+    motor0.SetPercent(25);
+    motor1.SetPercent(25);
+}
