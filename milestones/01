@@ -1,0 +1,101 @@
+#include <FEHLCD.h>
+#include <FEHIO.h>
+#include <FEHUtility.h>
+#include <FEHMotor.h>
+#include <FEHSD.h>
+#include <FEHRCS.h>
+
+// define pi
+#define pi 3.14159
+
+// Declare Motors and Encoders
+DigitalEncoder left_encoder(FEHIO::P1_1);
+DigitalEncoder right_encoder(FEHIO::P1_0);
+FEHMotor left_motor(FEHMotor::Motor0, 9.0);
+FEHMotor right_motor(FEHMotor::Motor1, 9.0);
+
+
+// Function for moving forward
+void move_forward(int percent, int counts)
+{
+    // Reset encoder counts
+    right_encoder.ResetCounts();
+    left_encoder.ResetCounts();
+    // Set both motors to desired percent
+    left_motor.SetPercent(percent);
+    right_motor.SetPercent(percent);
+    // Run motors while the average of left and right encoder is less than
+    // counts
+    while (((left_encoder.Counts() + right_encoder.Counts()) / 2) < counts);
+
+    // Turn off motors
+    left_motor.Stop();
+    right_motor.Stop();
+}
+
+// Function for turning left
+void turn_left(int percent, int counts)
+{
+    // Reset encoder counts
+    right_encoder.ResetCounts();
+    left_encoder.ResetCounts();
+
+    // Set both motors to desired percentage
+    right_motor.SetPercent(percent);
+    left_motor.SetPercent(-percent);
+    // Run motors for time
+    while (((left_encoder.Counts() + right_encoder.Counts()) / 2) < counts*6);
+    
+    // turn off motors
+    right_motor.Stop();
+    left_motor.Stop();
+}
+
+// Function for turning right
+void turn_right(int percent, int counts)
+{
+    // Reset encoder counts
+    left_encoder.ResetCounts();
+    right_encoder.ResetCounts();
+
+    // Set both motors to desired percentage
+    right_motor.SetPercent(-percent);
+    left_motor.SetPercent(percent);
+    
+    // Run motors for time
+    while (((left_encoder.Counts() + right_encoder.Counts()) / 2) < counts*6);
+
+    // turn off motors
+    right_motor.Stop();
+    left_motor.Stop();
+}
+
+enum LineStates
+{
+    MIDDLE,
+    RIGHT,
+    LEFT
+};
+
+int main(void)
+{
+    AnalogInputPin sensorLeft(FEHIO::P1_0);
+    AnalogInputPin sensorCenter(FEHIO::P1_1);
+    AnalogInputPin sensorRight(FEHIO::P1_2);
+    
+    int motor_percent = 25; //Input power level here
+    int expected_counts = (318/(2*pi*1.25)); //Input theoretical counts here
+    
+    //move from right wall to left wall
+    move_forward(motor_percent, expected_counts*(20-9));  //course length - robot length
+
+    //up the ramp and down the ramp
+    move_forward(motor_percent+15, expected_counts*(12.5+9)); //ramp length + robot length
+    turn_left(motor_percent+35, expected_counts); 
+    turn_left(motor_percent+35, expected_counts);
+    turn_left(motor_percent+35, expected_counts);
+    turn_left(motor_percent+35, expected_counts);
+    move_forward(motor_percent, expected_counts*(12.5+9)); //ramp length + robot length
+
+    return 0;
+}
