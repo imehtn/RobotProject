@@ -79,10 +79,6 @@ enum LineStates
 
 int main(void)
 {
-    AnalogInputPin sensorLeft(FEHIO::P1_0);
-    AnalogInputPin sensorCenter(FEHIO::P1_1);
-    AnalogInputPin sensorRight(FEHIO::P1_2);
-    
     int motor_percent = 25; //Input power level here
     int expected_counts = (318/(2*pi*1.25)); //Input theoretical counts here
     
