@@ -80,10 +80,10 @@ enum LineStates
 int main(void)
 {
     int motor_percent = 25; //Input power level here
-    int expected_counts = (318/(2*pi*1.25)); //Input theoretical counts here
+    int expected_counts = (318/(2*pi*1)); //Input theoretical counts here
     
     //move from right wall to left wall
-    move_forward(motor_percent, expected_counts*(20-9));  //course length - robot length
+    move_forward(motor_percent, expected_counts*(36-9));  //course length - robot length
 
     //up the ramp and down the ramp
     move_forward(motor_percent+15, expected_counts*(12.5+9)); //ramp length + robot length
