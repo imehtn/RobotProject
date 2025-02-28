@@ -9,10 +9,10 @@
 #define pi 3.14159
 
 // Declare Motors and Encoders
-DigitalEncoder left_encoder(FEHIO::P1_1);
-DigitalEncoder right_encoder(FEHIO::P1_0);
-FEHMotor left_motor(FEHMotor::Motor0, 9.0);
-FEHMotor right_motor(FEHMotor::Motor1, 9.0);
+DigitalEncoder left_encoder(FEHIO::P0_0);
+DigitalEncoder right_encoder(FEHIO::P0_1);
+FEHMotor left_motor(FEHMotor::Motor1, 9.0);
+FEHMotor right_motor(FEHMotor::Motor0, 9.0);
 
 
 // Function for moving forward
@@ -22,8 +22,26 @@ void move_forward(int percent, int counts)
     right_encoder.ResetCounts();
     left_encoder.ResetCounts();
     // Set both motors to desired percent
-    left_motor.SetPercent(percent);
+    left_motor.SetPercent(-percent);
     right_motor.SetPercent(percent);
+    // Run motors while the average of left and right encoder is less than
+    // counts
+    while (((left_encoder.Counts() + right_encoder.Counts()) / 2) < counts);
+
+    // Turn off motors
+    left_motor.Stop();
+    right_motor.Stop();
+}
+
+// Function for moving forward
+void move_backward(int percent, int counts)
+{
+    // Reset encoder counts
+    right_encoder.ResetCounts();
+    left_encoder.ResetCounts();
+    // Set both motors to desired percent
+    left_motor.SetPercent(percent);
+    right_motor.SetPercent(-percent);
     // Run motors while the average of left and right encoder is less than
     // counts
     while (((left_encoder.Counts() + right_encoder.Counts()) / 2) < counts);
@@ -42,7 +60,7 @@ void turn_left(int percent, int counts)
 
     // Set both motors to desired percentage
     right_motor.SetPercent(percent);
-    left_motor.SetPercent(-percent);
+    left_motor.SetPercent(percent);
     // Run motors for time
     while (((left_encoder.Counts() + right_encoder.Counts()) / 2) < counts*6);
     
@@ -60,7 +78,7 @@ void turn_right(int percent, int counts)
 
     // Set both motors to desired percentage
     right_motor.SetPercent(-percent);
-    left_motor.SetPercent(percent);
+    left_motor.SetPercent(-percent);
     
     // Run motors for time
     while (((left_encoder.Counts() + right_encoder.Counts()) / 2) < counts*6);
@@ -83,15 +101,23 @@ int main(void)
     int expected_counts = (318/(2*pi*1)); //Input theoretical counts here
     
     //move from right wall to left wall
-    move_forward(motor_percent, expected_counts*(36-9));  //course length - robot length
+    move_forward(motor_percent, expected_counts*(30-9)); 
+    Sleep(5);
+    float x, y; //for touch screen
+    
+    //Initialize the screen
+    LCD.Clear(BLACK);
+    LCD.SetFontColor(WHITE);
+
+    LCD.WriteLine("Shaft Encoder Exploration Test");
+    LCD.WriteLine("Touch the screen");
+    while(!LCD.Touch(&x,&y)); //Wait for screen to be pressed
+    while(LCD.Touch(&x,&y)); //Wait for screen to be unpressed
+
 
     //up the ramp and down the ramp
-    move_forward(motor_percent+15, expected_counts*(12.5+9)); //ramp length + robot length
-    turn_left(motor_percent+35, expected_counts); 
-    turn_left(motor_percent+35, expected_counts);
-    turn_left(motor_percent+35, expected_counts);
-    turn_left(motor_percent+35, expected_counts);
-    move_forward(motor_percent, expected_counts*(12.5+9)); //ramp length + robot length
+    move_forward(motor_percent, expected_counts*(12.5+9)); 
+    move_backward(motor_percent, expected_counts*(12.5+9)); 
 
     return 0;
 }
