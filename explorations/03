@@ -1,0 +1,100 @@
+#include <FEHLCD.h>
+#include <FEHIO.h>
+#include <FEHUtility.h>
+#include <FEHMotor.h>
+#include <FEHSD.h>
+#include <FEHRCS.h>
+
+// define pi
+#define pi 3.14159
+
+// Declare Motors and Encoders
+DigitalEncoder left_encoder(FEHIO::P0_0);
+DigitalEncoder right_encoder(FEHIO::P0_1);
+FEHMotor left_motor(FEHMotor::Motor2, 9.0);
+FEHMotor right_motor(FEHMotor::Motor1, 9.0);
+
+DigitalInputPin distSensor(FEHIO::P1_0);
+
+
+// Function for moving forward
+void move_forward(int percent, int counts)
+{
+    // Reset encoder counts
+    right_encoder.ResetCounts();
+    left_encoder.ResetCounts();
+    // Set both motors to desired percent
+    left_motor.SetPercent(percent);
+    right_motor.SetPercent(percent);
+    // Run motors while the average of left and right encoder is less than
+    // counts
+    while (((left_encoder.Counts() + right_encoder.Counts()) / 2) < counts)
+    {
+        LCD.WriteLine(right_encoder.Counts());
+        LCD.WriteLine(right_encoder.Counts());
+    }
+
+    // Turn off motors
+    left_motor.Stop();
+    right_motor.Stop();
+}
+
+int main(void)
+{   
+    //part 1
+   //RCS.InitializeTouchMenu("0910B5JFE"); //run menu to select course region
+
+   int motor_percent = 25; //Input power level here
+   int expected_counts = (318/(2*pi*1.25)); //Input theoretical counts here
+    
+   /*
+    //part 2.2
+   int objectInRange = distSensor.Value();
+
+
+    while(distSensor.Value()==1)
+    {
+        right_motor.SetPercent(-motor_percent);
+        left_motor.SetPercent(-motor_percent);
+    }
+
+    right_motor.SetPercent(motor_percent);
+    left_motor.SetPercent(motor_percent); 
+    Sleep(1000);
+    right_motor.SetPercent(-motor_percent);
+    left_motor.SetPercent(motor_percent); 
+    Sleep(1500);
+
+    right_motor.SetPercent(-motor_percent);
+    left_motor.SetPercent(-motor_percent); 
+
+    while(distSensor.Value() == 1){};
+    right_motor.SetPercent(motor_percent);
+    left_motor.SetPercent(motor_percent); 
+    Sleep(1000);
+    right_motor.SetPercent(motor_percent);
+    left_motor.SetPercent(-motor_percent);     
+    Sleep(1500);
+
+    right_motor.SetPercent(-motor_percent);
+    left_motor.SetPercent(-motor_percent); 
+    Sleep(10000);*/
+
+    //part 2.3
+    DigitalInputPin switch4(FEHIO::P3_0);
+
+    while (switch4.Value());
+    while (!(switch4.Value()));
+    move_forward(-motor_percent, expected_counts*24);
+    Sleep(5000);
+    while(distSensor.Value() == 0)
+    {
+        right_motor.SetPercent(motor_percent);
+        left_motor.SetPercent(motor_percent); 
+    }
+
+    left_motor.Stop(); 
+    right_motor.Stop(); 
+
+    return 0;
+}
