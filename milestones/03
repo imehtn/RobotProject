@@ -1,0 +1,234 @@
+#include <FEHLCD.h>
+#include <FEHIO.h>
+#include <FEHUtility.h>
+#include <FEHMotor.h>
+#include <FEHSD.h>
+#include <FEHRCS.h>
+
+// define pi
+#define pi 3.14159
+
+// Declare Motors and Encoders
+DigitalEncoder left_encoder(FEHIO::P0_0);
+DigitalEncoder right_encoder(FEHIO::P0_1);
+FEHMotor left_motor(FEHMotor::Motor2, 9.0);
+FEHMotor right_motor(FEHMotor::Motor1, 9.0);
+//cds cell
+AnalogInputPin cds_cell(FEHIO::P1_0);
+//optosensors
+AnalogInputPin sensorLeft(FEHIO::P2_0);
+AnalogInputPin sensorCenter(FEHIO::P2_1);
+AnalogInputPin sensorRight(FEHIO::P2_2);
+
+// Function for moving forward
+void move_forward(int percent, double counts)
+{
+    // Reset encoder counts
+    right_encoder.ResetCounts();
+    left_encoder.ResetCounts();
+    // Set both motors to desired percent
+    left_motor.SetPercent(-percent);
+    right_motor.SetPercent(percent);
+    // Run motors while the average of left and right encoder is less than
+    // counts
+    while (((left_encoder.Counts() + right_encoder.Counts()) / 2) < counts);
+
+    // Turn off motors
+    left_motor.Stop();
+    right_motor.Stop();
+}
+
+// Function for moving forward
+void move_backward(int percent, double counts)
+{
+    // Reset encoder counts
+    right_encoder.ResetCounts();
+    left_encoder.ResetCounts();
+    // Set both motors to desired percent
+    left_motor.SetPercent(percent);
+    right_motor.SetPercent(-percent);
+    // Run motors while the average of left and right encoder is less than
+    // counts
+    while (((left_encoder.Counts() + right_encoder.Counts()) / 2) < counts);
+
+    // Turn off motors
+    left_motor.Stop();
+    right_motor.Stop();
+}
+
+// Function for turning left
+void turn_left(int percent, double counts)
+{
+    // Reset encoder counts
+    right_encoder.ResetCounts();
+    left_encoder.ResetCounts();
+
+    // Set both motors to desired percentage
+    right_motor.SetPercent(percent);
+    left_motor.SetPercent(percent);
+    // Run motors for time
+    while (((left_encoder.Counts() + right_encoder.Counts()) / 2) < counts*6.4);
+    
+    // turn off motors
+    right_motor.Stop();
+    left_motor.Stop();
+}
+
+// Function for turning right
+void turn_right(int percent, double counts)
+{
+    // Reset encoder counts
+    left_encoder.ResetCounts();
+    right_encoder.ResetCounts();
+
+    // Set both motors to desired percentage
+    right_motor.SetPercent(-percent);
+    left_motor.SetPercent(-percent);
+    
+    // Run motors for time
+    while (((left_encoder.Counts() + right_encoder.Counts()) / 2) < counts*6.4);
+
+    // turn off motors
+    right_motor.Stop();
+    left_motor.Stop();
+}
+
+enum LineStates
+{
+    MIDDLE,
+    RIGHT,
+    LEFT
+};
+
+void lineFollowing(int state, int motor_percent)
+{
+    while (true)
+    { // I will follow this line forever!
+        switch (state)
+        {
+        // If I am in the middle of the line...
+        case MIDDLE:
+            left_motor.SetPercent(-motor_percent);
+            right_motor.SetPercent(motor_percent);
+
+            if (sensorRight.Value() >2.5)
+            {
+                state = RIGHT; // update a new state
+            }
+            if (sensorLeft.Value() >2.1)
+            {
+                state = LEFT; // update a new state
+            }
+            break;
+
+        // If the right sensor is on the line...
+        case RIGHT:
+            right_motor.SetPercent(motor_percent);
+            left_motor.SetPercent(motor_percent);
+            // Drive
+            Sleep(200);
+            if (sensorCenter.Value()>2.6)
+            {
+                state = MIDDLE;
+            }
+            if (sensorLeft.Value() > 2.1)
+            {
+                state = LEFT; // update a new state
+            }
+            break;
+        // If the left sensor is on the line...
+        case LEFT:
+            right_motor.SetPercent(-motor_percent);
+            left_motor.SetPercent(-motor_percent);
+            // Drive
+            Sleep(200);
+            if (sensorCenter.Value()>2.6)
+            {
+                state = MIDDLE;
+            }
+            //added
+            if (sensorRight.Value() >2.5)
+            {
+                state = RIGHT; // update a new state
+            }
+
+            break;
+
+        default: // Error. Something is very wrong.
+            break;
+        }
+    }
+}
+
+int main(void)
+{
+    int motor_percent = 35; //Input power level here
+    double expected_counts = (318/(2*pi*1.175)); //Input theoretical counts here
+    
+    double adjust = 0.889; // actual val/intended val
+
+
+    while (!(cds_cell.Value()<.29 && cds_cell.Value()>.19)){};
+
+    while (cds_cell.Value()<.29 && cds_cell.Value()>.19)
+    {
+
+    move_forward(motor_percent, expected_counts*3.5*adjust);
+    move_backward(motor_percent, expected_counts*8*adjust);
+
+    turn_left(motor_percent, expected_counts*0.5*adjust); 
+    move_forward(motor_percent, expected_counts*9*adjust);
+    turn_left(motor_percent, expected_counts); 
+
+    //up the ramp
+
+    move_forward(motor_percent, expected_counts*39.5*adjust);
+
+    //turn left 
+    turn_left(motor_percent, expected_counts*adjust); 
+    move_forward(motor_percent, expected_counts*20*adjust);
+    move_backward(motor_percent, expected_counts*20*adjust);
+    turn_left(motor_percent, expected_counts); 
+    move_forward(motor_percent, expected_counts*45*adjust);
+
+
+
+    
+    //while(cds_cell.Value() < 1.3 && cds_cell.Value() > 1.05){};
+    //if(cds_cell.Value()<.29 && cds_cell.Value()>.19)
+    //{
+       /*LCD.WriteLine(cds_cell.Value());
+        LCD.Clear(RED);
+        turn_right(motor_percent, expected_counts*0.1*adjust); 
+        move_forward(motor_percent, expected_counts*7*adjust);
+        move_backward(motor_percent, expected_counts*7*adjust);
+        turn_left(motor_percent, expected_counts*0.1*adjust);
+        move_backward(motor_percent, expected_counts*15*adjust);
+        turn_left(motor_percent, expected_counts*adjust); 
+        move_forward(motor_percent, expected_counts*36.5*adjust);
+        turn_right(motor_percent, expected_counts*adjust);
+        move_forward(motor_percent, expected_counts*5*adjust);
+        turn_left(motor_percent, expected_counts*1.5*adjust);
+        move_forward(motor_percent, expected_counts*5*adjust);*/
+   // }
+    //if(cds_cell.Value()<1.1 && cds_cell.Value()>0.25)
+    /*{
+        LCD.WriteLine(cds_cell.Value());
+
+        LCD.Clear(BLUE);
+        turn_left(motor_percent, expected_counts*0.1*adjust); 
+        move_forward(motor_percent, expected_counts*7*adjust);
+        move_backward(motor_percent, expected_counts*7*adjust);
+        turn_right(motor_percent, expected_counts*0.1*adjust);
+        move_backward(motor_percent, expected_counts*15*adjust);
+        turn_left(motor_percent, expected_counts*adjust); 
+        move_forward(motor_percent, expected_counts*37*adjust);
+        turn_right(motor_percent, expected_counts*adjust);
+        move_forward(motor_percent, expected_counts*5*adjust);
+        turn_left(motor_percent, expected_counts*1.5*adjust);
+        move_forward(motor_percent, expected_counts*7*adjust);
+    }  */
+}
+
+    return 0;
+}
