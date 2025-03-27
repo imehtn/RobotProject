@@ -1,0 +1,243 @@
+#include <FEHLCD.h>
+#include <FEHIO.h>
+#include <FEHUtility.h>
+#include <FEHMotor.h>
+#include <FEHSD.h>
+#include <FEHRCS.h>
+#include <FEHServo.h>
+
+
+// define pi
+#define pi 3.14159
+
+// Declare Motors and Encoders
+DigitalEncoder left_encoder(FEHIO::P0_0);
+DigitalEncoder right_encoder(FEHIO::P0_1);
+FEHMotor left_motor(FEHMotor::Motor2, 9.0);
+FEHMotor right_motor(FEHMotor::Motor1, 9.0);
+//cds cell
+AnalogInputPin cds_cell(FEHIO::P1_0);
+//optosensors
+AnalogInputPin sensorLeft(FEHIO::P2_0);
+AnalogInputPin sensorCenter(FEHIO::P2_1);
+AnalogInputPin sensorRight(FEHIO::P2_2);
+FEHServo arm(FEHServo::Servo0);
+DigitalInputPin cell(FEHIO::P3_0);
+
+// Function for moving forward
+void move_forward(int percent, double counts)
+{
+    // Reset encoder counts
+    right_encoder.ResetCounts();
+    left_encoder.ResetCounts();
+    // Set both motors to desired percent
+    left_motor.SetPercent(-percent);
+    right_motor.SetPercent(percent+2);
+    // Run motors while the average of left and right encoder is less than
+    // counts
+    while (((left_encoder.Counts() + right_encoder.Counts()) / 2) < counts);
+
+    // Turn off motors
+    left_motor.Stop();
+    right_motor.Stop();
+}
+
+// Function for moving forward
+void move_backward(int percent, double counts)
+{
+    // Reset encoder counts
+    right_encoder.ResetCounts();
+    left_encoder.ResetCounts();
+    // Set both motors to desired percent
+    left_motor.SetPercent(percent);
+    right_motor.SetPercent(-percent-2);
+    // Run motors while the average of left and right encoder is less than
+    // counts
+    while (((left_encoder.Counts() + right_encoder.Counts()) / 2) < counts);
+
+    // Turn off motors
+    left_motor.Stop();
+    right_motor.Stop();
+}
+
+// Function for turning left
+void turn_left(int percent, double counts)
+{
+    // Reset encoder counts
+    right_encoder.ResetCounts();
+    left_encoder.ResetCounts();
+
+    // Set both motors to desired percentage
+    right_motor.SetPercent(percent+2);
+    left_motor.SetPercent(percent);
+    // Run motors for time
+    while (((left_encoder.Counts() + right_encoder.Counts()) / 2) < counts*6.4);
+    
+    // turn off motors
+    right_motor.Stop();
+    left_motor.Stop();
+}
+
+// Function for turning right
+void turn_right(int percent, double counts)
+{
+    // Reset encoder counts
+    left_encoder.ResetCounts();
+    right_encoder.ResetCounts();
+
+    // Set both motors to desired percentage
+    right_motor.SetPercent(-percent-2);
+    left_motor.SetPercent(-percent);
+    
+    // Run motors for time
+    while (((left_encoder.Counts() + right_encoder.Counts()) / 2) < counts*6.4);
+
+    // turn off motors
+    right_motor.Stop();
+    left_motor.Stop();
+}
+
+enum LineStates
+{
+    MIDDLE,
+    RIGHT,
+    LEFT
+};
+
+void lineFollowing(int state, int motor_percent)
+{
+    while (true)
+    { // I will follow this line forever!
+        switch (state)
+        {
+        // If I am in the middle of the line...
+        case MIDDLE:
+            left_motor.SetPercent(-motor_percent);
+            right_motor.SetPercent(motor_percent+2);
+            Sleep(1.0);
+            if (sensorRight.Value() >2.6)
+            {
+                state = RIGHT; // update a new state
+            }
+            if (sensorLeft.Value() >2.2)
+            {
+                state = LEFT; // update a new state
+            }
+            break;
+
+        // If the right sensor is on the line...
+        case RIGHT:
+            right_motor.SetPercent(motor_percent+2);
+            left_motor.SetPercent(motor_percent);
+            // Drive
+            Sleep(1.0);
+            if (sensorCenter.Value()>2.6)
+            {
+                state = MIDDLE;
+            }
+            if (sensorLeft.Value() > 2.2)
+            {
+                state = LEFT; // update a new state
+            }
+            break;
+        // If the left sensor is on the line...
+        case LEFT:
+            right_motor.SetPercent(-motor_percent-2);
+            left_motor.SetPercent(-motor_percent);
+            // Drive
+            Sleep(1.0);
+            if (sensorCenter.Value()>2.6)
+            {
+                state = MIDDLE;
+            }
+            //added
+            if (sensorRight.Value() >2.6)
+            {
+                state = RIGHT; // update a new state
+            }
+
+            break;
+
+        default: // Error. Something is very wrong.
+            break;
+        }
+    }
+}
+
+int main(void)
+{
+    int motor_percent = 40; //Input power level here
+    double expected_counts = (318/(2*pi*1.175)); //Input theoretical counts here
+    double adjust = 0.842; // actual val/intended val
+    //RCS.InitializeTouchMenu("0910B5JFE"); //run menu to select course region
+
+    /*
+    turn_left(motor_percent, expected_counts*0.8);
+    move_forward(motor_percent, expected_counts*10*adjust);
+    turn_right(motor_percent, expected_counts*adjust*1.1);*/
+    //arm.TouchCalibrate();
+
+    int min = 820;
+    int max = 2220;
+    arm.SetMin(min);
+    arm.SetMax(max);
+
+    //red < 0.2 && blue < 0.6
+    while (!(cds_cell.Value()<.2)){};
+    while (cds_cell.Value()<.2){};
+
+    turn_left(motor_percent, expected_counts*0.15*adjust);
+    move_backward(motor_percent, expected_counts*15*adjust);
+    while(cell.Value()){};
+    while(!cell.Value()){};
+    turn_right(motor_percent, expected_counts*0.3*adjust);
+    move_forward(motor_percent, expected_counts*3*adjust);
+    turn_right(motor_percent, expected_counts*1.1*adjust);
+
+    move_backward(motor_percent, expected_counts*15*adjust);
+    turn_left(motor_percent, expected_counts*0.8*adjust);
+    move_backward(motor_percent, expected_counts*15*adjust);
+    turn_left(motor_percent, expected_counts*0.8); 
+    move_backward(motor_percent, expected_counts*3*adjust);
+    turn_right(motor_percent, expected_counts*1.1*adjust);
+    move_backward(motor_percent, expected_counts*15*adjust);
+    while(cell.Value()){};
+    while(!cell.Value()){};        
+    arm.SetDegree(180.);
+    Sleep(1.0);
+    arm.SetDegree(0.);
+    
+    move_forward(motor_percent, expected_counts*10*adjust);
+    turn_left(motor_percent, expected_counts*0.8);
+    int lever = RCS.GetLever();
+
+    if (lever == 0)
+    {
+        move_backward(motor_percent, expected_counts*10*adjust);
+        turn_right(motor_percent, expected_counts*1.1*adjust);
+        move_backward(motor_percent, expected_counts*10*adjust);
+        arm.SetDegree(180.);
+        Sleep(5.0);
+        arm.SetDegree(0.);
+    }
+    else if (lever == 1)
+    {
+        move_backward(motor_percent, expected_counts*12*adjust);
+        turn_right(motor_percent, expected_counts*1.1*adjust);
+        move_backward(motor_percent, expected_counts*8*adjust);
+        arm.SetDegree(180.);
+        Sleep(5.0);
+        arm.SetDegree(0.);
+    }
+    else if (lever == 2)
+    {
+        move_backward(motor_percent, expected_counts*14*adjust);
+        turn_right(motor_percent, expected_counts*1.1*adjust);
+        move_backward(motor_percent, expected_counts*6*adjust);
+        arm.SetDegree(180.);
+        Sleep(5.0);
+        arm.SetDegree(0.);
+    }
+
+    return 0;
+}
