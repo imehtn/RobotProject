@@ -178,12 +178,20 @@ int main(void)
     //arm.TouchCalibrate();
 
     int min = 820;
-    int max = 2220;
+    int max = 2215;
     arm.SetMin(min);
     arm.SetMax(max);
 
-    while (cds_cell.Value()<.6){};
+    /*
+    while(true)
+    {
+        arm.SetDegree(0.); //45
+        Sleep(1.0);
+        arm.SetDegree(180.); //45
+    }*/
 
+
+    while (cds_cell.Value()<.6){};
     while (!(cds_cell.Value()<.6)){};
 
     move_backward(motor_percent, expected_counts*5.5*adjust);
@@ -196,52 +204,124 @@ int main(void)
     Sleep(1.0);
     left_motor.Stop();
     right_motor.Stop();
-    turn_left(motor_percent, expected_counts*1.05); 
-    arm.SetDegree(0.);
-    Sleep(1.0);
-    move_backward(motor_percent, expected_counts*3*adjust);
-    arm.SetDegree(90.);
-    Sleep(1.0);
-    move_forward(motor_percent, expected_counts*3*adjust);
-    arm.SetDegree(0.);
-    Sleep(1.0);
-    move_backward(motor_percent, expected_counts*3*adjust);
-    arm.SetDegree(90.);
-    Sleep(1.0);
-    move_forward(motor_percent, expected_counts*3*adjust);
-    arm.SetDegree(0.);
-    Sleep(1.0);
-    move_backward(motor_percent, expected_counts*3*adjust);
-    arm.SetDegree(90.);
-    Sleep(1.0);
-    move_forward(motor_percent, expected_counts*3*adjust);
-    arm.SetDegree(0.);
-    Sleep(1.0);
-    move_backward(motor_percent, expected_counts*3*adjust);
-    arm.SetDegree(30.);
-    Sleep(3.0);
+    turn_left(motor_percent, expected_counts*1.0); 
 
+    //start
+    arm.SetDegree(0.);
+    Sleep(1.0);
+    move_backward(motor_percent, expected_counts*4*adjust);
+    arm.SetDegree(130.); //45
+    Sleep(1.0);
+    move_forward(motor_percent, expected_counts*4*adjust);//
+    turn_right(motor_percent, expected_counts*0.1*adjust);//@@
+    
+    arm.SetDegree(0.);
+    Sleep(1.0);
+    move_backward(motor_percent, expected_counts*4.5*adjust);
+    arm.SetDegree(130.); //90
+    Sleep(1.0);
+    move_forward(motor_percent, expected_counts*4*adjust);//
+    turn_right(motor_percent, expected_counts*0.1*adjust);//@@
+
+    arm.SetDegree(0.);
+    Sleep(1.0);
+    move_backward(motor_percent, expected_counts*4*adjust);
+    arm.SetDegree(130.); //135
+    Sleep(1.0);
+    move_forward(motor_percent, expected_counts*4*adjust);//
+    turn_right(motor_percent, expected_counts*0.1*adjust);//@@
+
+    arm.SetDegree(0.);
+    Sleep(1.0);
+    move_backward(motor_percent, expected_counts*4.5*adjust);
+    arm.SetDegree(130.); //180
+    Sleep(1.0);
+    move_forward(motor_percent, expected_counts*4*adjust);//
+    turn_right(motor_percent, expected_counts*0.1*adjust);//@@
+
+    arm.SetDegree(0.);
+    Sleep(1.0);
+    move_backward(motor_percent, expected_counts*4*adjust);
+    arm.SetDegree(130.); //225
+    Sleep(1.0);
+    move_forward(motor_percent, expected_counts*4*adjust);//
+    turn_right(motor_percent, expected_counts*0.1*adjust);//@@
+
+    arm.SetDegree(0.);
+    Sleep(1.0);
+    move_backward(motor_percent, expected_counts*4.5*adjust);
+    arm.SetDegree(130.); //270
+    Sleep(1.0);
+    move_forward(motor_percent, expected_counts*4*adjust);//
+    turn_right(motor_percent, expected_counts*0.1*adjust);//@@
+
+    arm.SetDegree(0.);
+    Sleep(1.0);
+    move_backward(motor_percent, expected_counts*4*adjust);
+    arm.SetDegree(130.); //300
+    Sleep(1.0);
+    move_forward(motor_percent, expected_counts*4*adjust);//
+    turn_right(motor_percent, expected_counts*0.1*adjust);//@@
+    
+    /*
     //move to original position
-    arm.SetDegree(0.);
+    arm.SetDegree(180.);
     Sleep(1.0);
-    move_forward(motor_percent, expected_counts*3*adjust);
-    arm.SetDegree(90.);
+    move_backward(motor_percent, expected_counts*4*adjust);
+    arm.SetDegree(70.); //45
     Sleep(1.0);
-    move_backward(motor_percent, expected_counts*3*adjust);
-    arm.SetDegree(0.);
+    move_forward(motor_percent, expected_counts*4*adjust);//
+    turn_left(motor_percent, expected_counts*0.1*adjust);//@@
+
+    arm.SetDegree(10.);
     Sleep(1.0);
-    move_forward(motor_percent, expected_counts*3*adjust);
-    arm.SetDegree(90.);
+    move_backward(motor_percent, expected_counts*4*adjust);
+    arm.SetDegree(0.); //90
     Sleep(1.0);
-    move_backward(motor_percent, expected_counts*3*adjust);
-    arm.SetDegree(0.);
+    move_forward(motor_percent, expected_counts*4*adjust);//
+    turn_left(motor_percent, expected_counts*0.1*adjust);//@@
+
+    arm.SetDegree(180.);
     Sleep(1.0);
-    move_forward(motor_percent, expected_counts*3*adjust);
-    arm.SetDegree(90.);
+    move_backward(motor_percent, expected_counts*4*adjust);
+    arm.SetDegree(70.); //135
     Sleep(1.0);
-    move_backward(motor_percent, expected_counts*3*adjust);
-    arm.SetDegree(0.);
+    move_forward(motor_percent, expected_counts*4*adjust);//
+    turn_left(motor_percent, expected_counts*0.1*adjust);//@@
+
+    arm.SetDegree(10.);
     Sleep(1.0);
+    move_backward(motor_percent, expected_counts*4*adjust);
+    arm.SetDegree(0.); //180
+    Sleep(1.0);
+    move_forward(motor_percent, expected_counts*4*adjust);//
+    turn_left(motor_percent, expected_counts*0.1*adjust);//@@
+
+    arm.SetDegree(180.);
+    Sleep(1.0);
+    move_backward(motor_percent, expected_counts*4*adjust);
+    arm.SetDegree(70.); //225
+    Sleep(1.0);
+    move_forward(motor_percent, expected_counts*4*adjust);//
+    turn_left(motor_percent, expected_counts*0.1*adjust);//@@
+
+    arm.SetDegree(10.);
+    Sleep(1.0);
+    move_backward(motor_percent, expected_counts*4*adjust);
+    arm.SetDegree(0.); //270
+    Sleep(1.0);
+    move_forward(motor_percent, expected_counts*4*adjust);//
+    turn_left(motor_percent, expected_counts*0.1*adjust);//@@
+
+    arm.SetDegree(180.);
+    Sleep(1.0);
+    move_backward(motor_percent, expected_counts*4*adjust);
+    arm.SetDegree(70.); //300
+    Sleep(1.0);
+    move_forward(motor_percent, expected_counts*4*adjust);//
+    turn_left(motor_percent, expected_counts*0.1*adjust);//@@
+    */
+
     arm.Off();
 
     //press final button
@@ -255,7 +335,7 @@ int main(void)
     left_motor.Stop();
     right_motor.Stop();
     move_backward(motor_percent, expected_counts*5*adjust);
-    turn_left(motor_percent, expected_counts*0.8);
+    turn_left(motor_percent, expected_counts*0.6);
     left_motor.SetPercent(-motor_percent);
     right_motor.SetPercent(motor_percent+2);
     while(cell.Value()) {};
