@@ -1,0 +1,505 @@
+#include <FEHLCD.h>
+#include <FEHIO.h>
+#include <FEHUtility.h>
+#include <FEHMotor.h>
+#include <FEHSD.h>
+#include <FEHRCS.h>
+#include <FEHServo.h>
+#include <FEHBattery.h>
+
+
+// define pi
+#define pi 3.14159
+//compost bin rotator max and mins
+const int MIN_ARM = 820;
+const int MAX_ARM  = 2215;
+//lever arm max and mins
+const int MIN_LEVER = 820;
+const int MAX_LEVER = 2215;
+
+const double EXPECTED = (318/(2*pi*1.175)); // theoretical counts here
+const double ADJUST = 0.842; // actual val/theoretical value
+
+// Declare Motors and Encoders
+DigitalEncoder left_encoder(FEHIO::P0_0);
+DigitalEncoder right_encoder(FEHIO::P0_1);
+FEHMotor left_motor(FEHMotor::Motor2, 9.0);
+FEHMotor right_motor(FEHMotor::Motor1, 9.0);
+//cds cell
+AnalogInputPin cds_cell(FEHIO::P1_0);
+//optosensors
+AnalogInputPin sensorLeft(FEHIO::P2_2);
+AnalogInputPin sensorCenter(FEHIO::P2_3);
+AnalogInputPin sensorRight(FEHIO::P2_4);
+//compost bin rotator and lever arm
+FEHServo arm(FEHServo::Servo6);
+FEHServo lever(FEHServo::Servo5);
+//microswitches
+DigitalInputPin cell(FEHIO::P3_0);
+DigitalInputPin cellBack(FEHIO::P2_0);
+
+
+
+// Function for moving forward
+void move_forward(int percent, double counts)
+{
+    // Reset encoder counts
+    right_encoder.ResetCounts();
+    left_encoder.ResetCounts();
+    // Set both motors to desired percent
+    left_motor.SetPercent(-percent);
+    right_motor.SetPercent(percent);
+    // Run motors while the average of left and right encoder is less than
+    // counts
+    while (((left_encoder.Counts() + right_encoder.Counts()) / 2) < counts);
+
+    // Turn off motors
+    left_motor.Stop();
+    right_motor.Stop();
+}
+
+// Function for moving forward
+void move_backward(int percent, double counts)
+{
+    // Reset encoder counts
+    right_encoder.ResetCounts();
+    left_encoder.ResetCounts();
+    // Set both motors to desired percent
+    left_motor.SetPercent(percent);
+    right_motor.SetPercent(-percent);
+    // Run motors while the average of left and right encoder is less than
+    // counts
+    while (((left_encoder.Counts() + right_encoder.Counts()) / 2) < counts);
+
+    // Turn off motors
+    left_motor.Stop();
+    right_motor.Stop();
+}
+// Function for moving forward
+void move_ramp(int percent, double counts)
+{
+    // Reset encoder counts
+    right_encoder.ResetCounts();
+    left_encoder.ResetCounts();
+    // Set both motors to desired percent
+    left_motor.SetPercent(percent+12.5);
+    right_motor.SetPercent(-percent);
+    // Run motors while the average of left and right encoder is less than
+    // counts
+    while (((left_encoder.Counts() + right_encoder.Counts()) / 2) < counts);
+
+    // Turn off motors
+    left_motor.Stop();
+    right_motor.Stop();
+}
+
+// Function for turning left
+void turn_left(int percent, double counts)
+{
+    // Reset encoder counts
+    right_encoder.ResetCounts();
+    left_encoder.ResetCounts();
+
+    // Set both motors to desired percentage
+    right_motor.SetPercent(percent);
+    left_motor.SetPercent(percent);
+    // Run motors for time
+    while (((left_encoder.Counts() + right_encoder.Counts()) / 2) < counts*6.4);
+    
+    // turn off motors
+    right_motor.Stop();
+    left_motor.Stop();
+}
+
+// Function for turning right
+void turn_right(int percent, double counts)
+{
+    // Reset encoder counts
+    left_encoder.ResetCounts();
+    right_encoder.ResetCounts();
+
+    // Set both motors to desired percentage
+    right_motor.SetPercent(-percent);
+    left_motor.SetPercent(-percent);
+    
+    // Run motors for time
+    while (((left_encoder.Counts() + right_encoder.Counts()) / 2) < counts*6.4);
+
+    // turn off motors
+    right_motor.Stop();
+    left_motor.Stop();
+}
+
+// Function for turning right
+void turn_right_ramp(int percent, double counts)
+{
+    // Reset encoder counts
+    left_encoder.ResetCounts();
+    right_encoder.ResetCounts();
+
+    // Set both motors to desired percentage
+    right_motor.SetPercent(-percent+15);
+    left_motor.SetPercent(-percent-15);
+    
+    // Run motors for time
+    while (((left_encoder.Counts() + right_encoder.Counts()) / 2) < counts*6.4);
+
+    // turn off motors
+    right_motor.Stop();
+    left_motor.Stop();
+}
+
+enum LineStates
+{
+    MIDDLE,
+    RIGHT,
+    LEFT
+};
+
+void lineFollowing(int state, int motor_percent)
+{
+    double time = TimeNow();
+    LCD.WriteLine("Before while");
+    while (TimeNow() - time < 2.0);
+    { // I will follow this line forever!
+        LCD.WriteLine("in while");
+
+        switch (state)
+        {
+            // If I am in the middle of the line...
+            case MIDDLE:
+            //drive forward
+            LCD.WriteLine("Middle State");
+            left_motor.SetPercent(-motor_percent);
+            right_motor.SetPercent(motor_percent);
+            Sleep(0.1);
+            if (sensorRight.Value() >3.4)
+            {
+                state = RIGHT; // update a new state
+            }
+            if (sensorLeft.Value() >2.7)
+            {
+                state = LEFT; // update a new state
+            }
+
+        // If the right sensor is on the line...
+        case RIGHT:
+        //drive to the left
+            LCD.WriteLine("Right State");
+            right_motor.SetPercent(motor_percent);
+            left_motor.SetPercent(motor_percent);
+            Sleep(0.1);
+            if (sensorCenter.Value()>2.6)
+            {
+                state = MIDDLE;
+            }
+            if (sensorLeft.Value() > 2.7)
+            {
+                state = LEFT; // update a new state
+            }
+
+        // If the left sensor is on the line...
+        case LEFT:
+        //drive to the right
+            LCD.WriteLine("Middle State");
+
+            right_motor.SetPercent(-motor_percent);
+            left_motor.SetPercent(-motor_percent);
+            Sleep(0.1);
+            if (sensorCenter.Value()>2.6)
+            {
+                state = MIDDLE;
+            }
+            if (sensorRight.Value() >3.4)
+            {
+                state = RIGHT; // update a new state
+            }
+        }
+    }
+}
+
+/*new method for only wanting to sens the microswith for sec amount of time*/
+
+void microSwitchBackInTime(double MOTOR_PERCENT, double sec)
+{
+    left_motor.SetPercent(-MOTOR_PERCENT);
+    right_motor.SetPercent(MOTOR_PERCENT);
+    while(cellBack.Value()) {};
+
+    double time = TimeNow();
+    LCD.WriteLine("Before while");
+    while (TimeNow() - time > 7.0 || !cellBack.Value()){};
+    
+    Sleep(0.5);
+    left_motor.Stop();
+    right_motor.Stop();
+    
+}
+
+//stops when microswitch is pressed
+void microSwitchFront(double MOTOR_PERCENT)
+{
+    left_motor.SetPercent(-MOTOR_PERCENT);
+    right_motor.SetPercent(MOTOR_PERCENT);
+    while(cell.Value()) {};
+    while(!cell.Value()) {};
+    Sleep(0.5);
+    left_motor.Stop();
+    right_motor.Stop();
+}
+//stops when microswitch is pressed
+void microSwitchBack(double MOTOR_PERCENT)
+{
+    left_motor.SetPercent(MOTOR_PERCENT);
+    right_motor.SetPercent(-MOTOR_PERCENT);
+    while(cellBack.Value()) {};
+    while(!cellBack.Value()) {};
+
+    Sleep(0.5);
+    left_motor.Stop();
+    right_motor.Stop();
+}
+
+void appleBucket(double MOTOR_PERCENT)
+{
+    //moves forwrad until microswitch is detected, presses start light
+    microSwitchFront(MOTOR_PERCENT);
+    Sleep(0.5);
+    //away from the light
+    move_backward(MOTOR_PERCENT, EXPECTED*10*ADJUST);
+    turn_right(MOTOR_PERCENT, EXPECTED*0.65*ADJUST);
+    //until microswitch touches the wall
+    microSwitchFront(MOTOR_PERCENT);
+    move_backward(MOTOR_PERCENT, EXPECTED*15.5*ADJUST);
+    turn_left(MOTOR_PERCENT, EXPECTED*0.95);
+    //lower stick to pick up apple bucket
+    lever.SetDegree(70.);
+    Sleep(0.5);
+    move_backward(MOTOR_PERCENT, EXPECTED*11*ADJUST);
+    //move the stick up to catch apple bucket
+    lever.SetDegree(180.);
+    Sleep(0.5);
+    //move forward until microswitch touches the wall
+    microSwitchFront(MOTOR_PERCENT);
+    move_backward(MOTOR_PERCENT, EXPECTED*0.5*ADJUST);
+    //align itself with the ramp
+    turn_right_ramp(MOTOR_PERCENT, EXPECTED*ADJUST*2.1);
+    //up the ramp
+    move_backward(MOTOR_PERCENT, EXPECTED*33*ADJUST);
+    turn_left(MOTOR_PERCENT, EXPECTED*1.25);
+    microSwitchFront(MOTOR_PERCENT);
+    move_backward(MOTOR_PERCENT, EXPECTED*7.5*ADJUST);
+    turn_right(MOTOR_PERCENT, EXPECTED*1.5*ADJUST);
+    //back microswitch touches the crate
+    microSwitchBack(MOTOR_PERCENT);
+    Sleep(0.5);
+    //drop apple bucket
+    lever.SetDegree(50.);
+    Sleep(0.5);
+    //move forward and bring the stick up
+    move_forward(MOTOR_PERCENT, EXPECTED*12.75*ADJUST);
+    lever.SetDegree(180.);
+}
+
+void humidifier(double MOTOR_PERCENT)
+{
+    arm.SetDegree(90.0);
+    turn_left(MOTOR_PERCENT, EXPECTED*0.95);
+    //move forwatd until microswitch touches the wall
+    microSwitchFront(MOTOR_PERCENT);
+    //align itself with the humidifier light signal
+    move_backward(MOTOR_PERCENT, EXPECTED*20.5*ADJUST);
+    Sleep(3.0);
+
+    //if signal is red 
+    if (cds_cell.Value()<0.7)
+    {
+        arm.SetDegree(115.0);
+
+        LCD.Clear(RED);
+        //press button and return to starting position
+        turn_right(MOTOR_PERCENT, EXPECTED*0.15);
+        Sleep(0.5);
+        move_backward(MOTOR_PERCENT, EXPECTED*3*ADJUST);
+        Sleep(0.5);
+        turn_left(MOTOR_PERCENT, EXPECTED*0.25);
+        move_backward(MOTOR_PERCENT, EXPECTED*4*ADJUST);
+        turn_right(MOTOR_PERCENT, EXPECTED*0.25);
+        move_forward(MOTOR_PERCENT, EXPECTED*5*ADJUST);
+        turn_left(MOTOR_PERCENT, EXPECTED*0.15);
+
+    }
+    //if signal is blue
+    else if (cds_cell.Value()>.7)
+    {
+        //arm.SetDegree(45.0);
+
+        //press button and return to starting position
+        LCD.Clear(BLUE);
+        turn_left(MOTOR_PERCENT, EXPECTED*0.1);
+        Sleep(0.5);
+        move_backward(MOTOR_PERCENT, EXPECTED*5*ADJUST);
+        Sleep(0.5);
+        turn_right(MOTOR_PERCENT, EXPECTED*0.15);
+        move_backward(MOTOR_PERCENT, EXPECTED*4*ADJUST);
+        turn_right(MOTOR_PERCENT, EXPECTED*0.15);
+        move_forward(MOTOR_PERCENT, EXPECTED*4*ADJUST);
+        turn_left(MOTOR_PERCENT, EXPECTED*0.10);
+
+    }
+    //if time is less than 5 sec 
+    //move_backward(MOTOR_PERCENT, EXPECTED*3*ADJUST);
+
+}
+
+void levers(double MOTOR_PERCENT)
+{
+     //after it hits the button it should go backwards (away from the button) than...
+     microSwitchFront(MOTOR_PERCENT);
+     move_backward(MOTOR_PERCENT, EXPECTED*10*ADJUST);
+     turn_right(MOTOR_PERCENT, EXPECTED*1.35*ADJUST);
+     microSwitchBack(MOTOR_PERCENT);
+     move_forward(MOTOR_PERCENT, EXPECTED*0.45*ADJUST);
+     //align robot with a lever 
+     lever.SetDegree(180.0);
+     turn_left(MOTOR_PERCENT, EXPECTED*0.95);
+     move_backward(MOTOR_PERCENT, EXPECTED*5*ADJUST);
+     turn_left(MOTOR_PERCENT, EXPECTED*0.2);
+     lever.SetDegree(30.);
+     Sleep(0.5);
+     //turn robot's mechanism up
+     move_forward(MOTOR_PERCENT, EXPECTED*3*ADJUST);
+     Sleep(5.0);
+     lever.SetDegree(20.);
+     //turn_right(MOTOR_PERCENT, EXPECTED*.15*ADJUST);
+     move_backward(MOTOR_PERCENT, EXPECTED*3*ADJUST);
+     lever.SetDegree(150.);
+     Sleep(0.5);
+     turn_right(MOTOR_PERCENT, EXPECTED*0.15*ADJUST);
+     move_forward(MOTOR_PERCENT, EXPECTED*8*ADJUST);
+     turn_right(MOTOR_PERCENT, EXPECTED*1.2*ADJUST);//1.4
+     microSwitchBack(MOTOR_PERCENT);
+     turn_right(MOTOR_PERCENT, EXPECTED*0.1*ADJUST);
+     move_forward(MOTOR_PERCENT, EXPECTED*20*ADJUST);
+    }
+
+void window(double MOTOR_PERCENT)
+{
+    //aligns itself with the window
+    turn_right(MOTOR_PERCENT, EXPECTED*1*ADJUST);
+    //piushes the lever window, opening it 
+    move_forward(MOTOR_PERCENT, EXPECTED*15*ADJUST);
+    move_backward(MOTOR_PERCENT, EXPECTED*3*ADJUST);
+    turn_right(MOTOR_PERCENT, EXPECTED*0.2*ADJUST);
+    //move_backward(MOTOR_PERCENT, EXPECTED*28*ADJUST);
+    microSwitchBack(MOTOR_PERCENT);
+    //drive up until the robot hits the wall by the ramp
+    turn_left(MOTOR_PERCENT, EXPECTED*1.3*ADJUST);
+    move_forward(MOTOR_PERCENT-5, EXPECTED*28*ADJUST);
+}
+
+void compost(double MOTOR_PERCENT )
+{   
+    //align with compost bin
+    turn_left(MOTOR_PERCENT, EXPECTED*0.95);
+    //until microswitch touches the wall
+    microSwitchFront(MOTOR_PERCENT);   
+    move_backward(MOTOR_PERCENT, EXPECTED*11*ADJUST);
+    turn_right(MOTOR_PERCENT, EXPECTED*1.25*ADJUST);
+    microSwitchFront(MOTOR_PERCENT);   
+    turn_left(MOTOR_PERCENT, EXPECTED*1.2);
+    //backwards and forwards movement to turn the compost bin
+    arm.SetDegree(35.);
+    Sleep(0.5);
+    move_backward(MOTOR_PERCENT, EXPECTED*6*ADJUST);
+    Sleep(0.5);
+    arm.SetDegree(135.);
+    Sleep(0.5);
+    move_forward(MOTOR_PERCENT, EXPECTED*3*ADJUST);
+    arm.SetDegree(35.);
+    Sleep(0.5);
+    move_backward(MOTOR_PERCENT, EXPECTED*3*ADJUST);
+    arm.SetDegree(135.);
+    Sleep(0.5);
+    move_forward(MOTOR_PERCENT, EXPECTED*3*ADJUST);
+    arm.SetDegree(35.);
+    Sleep(0.5);
+    move_backward(MOTOR_PERCENT, EXPECTED*3*ADJUST);
+    arm.SetDegree(135.);
+    Sleep(0.5);
+    move_forward(MOTOR_PERCENT, EXPECTED*3*ADJUST);
+    arm.SetDegree(35.);
+    Sleep(0.5);
+    move_backward(MOTOR_PERCENT, EXPECTED*3*ADJUST);
+    arm.SetDegree(135.);
+    Sleep(0.5);
+    //turn compost bin back
+    arm.SetDegree(35.);
+    Sleep(0.5);
+    move_forward(MOTOR_PERCENT, EXPECTED*4*ADJUST);
+    arm.SetDegree(145.);
+    Sleep(0.5);
+    move_backward(MOTOR_PERCENT, EXPECTED*3*ADJUST);
+    arm.SetDegree(35.);
+    Sleep(0.5);
+    move_forward(MOTOR_PERCENT, EXPECTED*3*ADJUST);
+    arm.SetDegree(135.);
+    Sleep(0.5);
+    move_backward(MOTOR_PERCENT, EXPECTED*3*ADJUST);
+    arm.SetDegree(35.);
+    Sleep(0.5);
+    move_forward(MOTOR_PERCENT, EXPECTED*3*ADJUST);
+    arm.SetDegree(135.);
+    Sleep(0.5);
+    move_backward(MOTOR_PERCENT, EXPECTED*3*ADJUST);
+    arm.SetDegree(35.);
+    Sleep(0.5);
+    //stop in front of the compost bin
+    move_forward(MOTOR_PERCENT, EXPECTED*3*ADJUST);
+    arm.SetDegree(135.);
+}
+
+void end(double MOTOR_PERCENT)
+{
+    turn_right(MOTOR_PERCENT, EXPECTED*1.25*ADJUST);
+    microSwitchFront(MOTOR_PERCENT);
+    move_backward(MOTOR_PERCENT, EXPECTED*6*ADJUST);
+    turn_left(MOTOR_PERCENT, EXPECTED*0.7*ADJUST);
+    microSwitchFront(MOTOR_PERCENT);
+}
+
+int main(void)
+{
+
+    //speed will always be 40, unaffected by the battery
+    double MOTOR_PERCENT = (11.5/Battery.Voltage()) * 40.0;
+
+    //Servo motors minimum and maximums
+    arm.SetMin(MIN_ARM);
+    arm.SetMax(MAX_ARM);
+    lever.SetMin(MIN_LEVER);
+    lever.SetMax(MAX_LEVER);
+
+    //run menu to select course region
+    //RCS.InitializeTouchMenu("0910B5JFE"); 
+
+    //read start light signal
+    while (cds_cell.Value()<.6){};
+    while (!(cds_cell.Value()<.6)){};
+    
+    //initial mechanism degrees
+    arm.SetDegree(90.);
+    lever.SetDegree(180.);
+    
+    //call function for each task
+    appleBucket(MOTOR_PERCENT);
+    humidifier(MOTOR_PERCENT);
+    levers(MOTOR_PERCENT);
+    window(MOTOR_PERCENT);
+    compost(MOTOR_PERCENT);
+    end(MOTOR_PERCENT);
+    
+    //end
+    return 0;
+    
+}
