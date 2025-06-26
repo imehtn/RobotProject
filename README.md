@@ -6,4 +6,6 @@ The final design of the robot accomplishes all these tasks using two mechanisms.
 
 CODE 
 
-Final code used with the Proteus controller to control the robot is store in the 
+Final code used with the Proteus controller to control the robot is store in the "Final Folder"
+
+Code used for Milestones and Explorations can be found in the appropriate folders as well.
